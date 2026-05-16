@@ -1,0 +1,71 @@
+[gd_scene load_steps=15 format=3 uid="uid://b8x8x8x8x8x8x"]
+
+[ext_resource type="Script" path="res://player.gd" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://bkq8r8yq8r8yq" path="res://addons/kaykit_character_pack_adventures/Characters/gltf/Barbarian.glb" id="2_barbarian"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
+radius = 0.6
+height = 1.8
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_1"]
+animation = &"Idle"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_2"]
+animation = &"Walking_A"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_3"]
+animation = &"Jump_Full_Short"
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_1"]
+advance_mode = 2
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_2"]
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_3"]
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_4"]
+switch_mode = 2
+advance_mode = 2
+
+[sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_1"]
+states/Idle/node = SubResource("AnimationNodeAnimation_1")
+states/Idle/position = Vector2(350, 100)
+states/Jump_Full_Short/node = SubResource("AnimationNodeAnimation_3")
+states/Jump_Full_Short/position = Vector2(450, 200)
+states/Walking_A/node = SubResource("AnimationNodeAnimation_2")
+states/Walking_A/position = Vector2(550, 100)
+transitions = [SubResource("AnimationNodeStateMachineTransition_1"), "Start", "Idle", SubResource("AnimationNodeStateMachineTransition_2"), "Idle", "Walking_A", SubResource("AnimationNodeStateMachineTransition_3"), "Walking_A", "Idle", SubResource("AnimationNodeStateMachineTransition_4"), "Jump_Full_Short", "Idle"]
+
+[sub_resource type="AnimationNodeStateMachinePlayback" id="AnimationNodeStateMachinePlayback_1"]
+
+[node name="Player" type="CharacterBody3D"]
+script = ExtResource("1_script")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_1")
+
+[node name="Visuals" type="Node3D" parent="."]
+
+[node name="Barbarian" parent="Visuals" instance=ExtResource("2_barbarian")]
+
+[node name="InteractionRay" type="RayCast3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+target_position = Vector3(0, 0, 2)
+
+[node name="CameraPivot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+
+[node name="SpringArm3D" type="SpringArm3D" parent="CameraPivot"]
+transform = Transform3D(-1, 0, 8.74228e-08, 0, 1, 0, -8.74228e-08, 0, -1, 0, 0, 0)
+collision_mask = 0
+spring_length = 8.0
+
+[node name="Camera3D" type="Camera3D" parent="CameraPivot/SpringArm3D"]
+current = true
+
+[node name="AnimationTree" type="AnimationTree" parent="."]
+tree_root = SubResource("AnimationNodeStateMachine_1")
+anim_player = NodePath("../Visuals/Barbarian/AnimationPlayer")
+active = true
+parameters/playback = SubResource("AnimationNodeStateMachinePlayback_1")
