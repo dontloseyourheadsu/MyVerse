@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://dkq8r8yq8r8y3" path="res://addons/kaykit_furniture_bits/Assets/gltf/lamp_standing.gltf" id="5_lamp"]
 [ext_resource type="PackedScene" uid="uid://dkq8r8yq8r8y4" path="res://addons/kaykit_furniture_bits/Assets/gltf/cactus_medium_A.gltf" id="7_cactus"]
 [ext_resource type="PackedScene" uid="uid://dkq8r8yq8r8y5" path="res://addons/kaykit_furniture_bits/Assets/gltf/bed_single_A.gltf" id="8_bed"]
+[ext_resource type="PackedScene" uid="uid://c6x6x6x6x6x6x" path="res://MobileControls.tscn" id="9_mobile"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 sky_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
@@ -39,6 +40,11 @@ material = SubResource("StandardMaterial3D_2")
 size = Vector3(100, 5, 1)
 
 [node name="Main" type="Node3D"]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="MobileControls" parent="CanvasLayer" instance=ExtResource("9_mobile")]
+mouse_filter = 1
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_1")

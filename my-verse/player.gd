@@ -8,15 +8,14 @@ extends CharacterBody3D
 @export var min_pitch = -0.5
 @export var max_pitch = 0.8
 
-@export var drag_float_height = 1.5
-
 var gravity = ProjectSettings.get_setting("physics/3d/default_gravity")
-var is_dragging = false
-var drag_plane = Plane(Vector3.UP, 0)
+
 var picked_item: Node3D = null
 
 var is_rotating_camera = false
 var camera_pitch = 0.0
+
+var mobile_input_dir = Vector2.ZERO
 
 @onready var visuals = $Visuals
 @onready var animation_tree = $AnimationTree
@@ -27,64 +26,35 @@ var camera_pitch = 0.0
 
 func _ready():
 	add_to_group("player")
-	input_ray_pickable = true
+	# Detach camera pivot from rigid movement
+	camera_pivot.top_level = true
 	# Ensure the walking animation loops
 	if anim_player.has_animation("Walking_A"):
 		anim_player.get_animation("Walking_A").loop_mode = Animation.LOOP_LINEAR
 
 func _input(event):
+	# Mouse-only camera rotation (Right Click)
 	if event is InputEventMouseButton:
-		# Grabbing with either Left Click or Right Click (if clicking character)
-		if event.pressed:
-			var is_lmb = event.button_index == MOUSE_BUTTON_LEFT
-			var is_rmb = event.button_index == MOUSE_BUTTON_RIGHT
-			
-			if is_lmb or is_rmb:
-				var camera = get_viewport().get_camera_3d()
-				if camera:
-					var from = camera.project_ray_origin(event.position)
-					var to = from + camera.project_ray_normal(event.position) * 1000
-					var space_state = get_world_3d().direct_space_state
-					var query = PhysicsRayQueryParameters3D.create(from, to)
-					var result = space_state.intersect_ray(query)
-					
-					# Check if we clicked the player or furniture
-					if result and (result.collider == self or result.collider.is_in_group("player")):
-						is_dragging = true
-						drag_plane = Plane(Vector3.UP, 0)
-						return # Stop processing to avoid starting camera rotation if it was RMB
-				
-			# If we didn't grab the player and it's a right click, rotate camera
-			if event.button_index == MOUSE_BUTTON_RIGHT:
+		if event.button_index == MOUSE_BUTTON_RIGHT:
+			if event.pressed:
 				is_rotating_camera = true
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-				
-		else:
-			# Release
-			if event.button_index == MOUSE_BUTTON_LEFT:
-				is_dragging = false
-			elif event.button_index == MOUSE_BUTTON_RIGHT:
-				is_dragging = false
+			else:
 				is_rotating_camera = false
 				Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 	if event is InputEventMouseMotion and is_rotating_camera:
-		camera_pivot.rotate_y(-event.relative.x * mouse_sensitivity)
-		camera_pitch -= event.relative.y * mouse_sensitivity
-		camera_pitch = clamp(camera_pitch, min_pitch, max_pitch)
-		camera_pivot.rotation.x = camera_pitch
+		rotate_camera(event.relative)
 
-	if event.is_action_pressed("interact"):
-		if picked_item:
-			drop_item()
-		else:
-			try_pick_item()
+func rotate_camera(relative: Vector2):
+	camera_pivot.rotate_y(-relative.x * mouse_sensitivity)
+	camera_pitch -= relative.y * mouse_sensitivity
+	camera_pitch = clamp(camera_pitch, min_pitch, max_pitch)
+	camera_pivot.rotation.x = camera_pitch
 
 func _physics_process(delta):
-	if is_dragging:
-		drag_logic()
-		state_machine.travel("Idle")
-		return
+	# Smoothly follow player with camera pivot
+	camera_pivot.global_position = camera_pivot.global_position.lerp(global_position + Vector3.UP * 1.5, 10.0 * delta)
 
 	# Gravity
 	if not is_on_floor():
@@ -95,8 +65,18 @@ func _physics_process(delta):
 		velocity.y = jump_velocity
 		state_machine.travel("Jump_Full_Short")
 
+	# Interact
+	if Input.is_action_just_pressed("interact"):
+		if picked_item:
+			drop_item()
+		else:
+			try_pick_item()
+
 	# Movement
-	var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
+	var input_dir = mobile_input_dir
+	if input_dir == Vector2.ZERO:
+		input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
+	
 	var cam = get_viewport().get_camera_3d()
 	
 	if cam:
@@ -126,17 +106,6 @@ func _physics_process(delta):
 	
 	if picked_item:
 		picked_item.global_position = global_position + visuals.transform.basis.z * 1.5 + Vector3.UP * 0.5
-
-func drag_logic():
-	var camera = get_viewport().get_camera_3d()
-	var mouse_pos = get_viewport().get_mouse_position()
-	var ray_origin = camera.project_ray_origin(mouse_pos)
-	var ray_direction = camera.project_ray_normal(mouse_pos)
-	
-	var intersection = drag_plane.intersects_ray(ray_origin, ray_direction)
-	if intersection:
-		global_position = intersection + Vector3.UP * drag_float_height
-		velocity = Vector3.ZERO
 
 func try_pick_item():
 	if interaction_ray.is_colliding():
